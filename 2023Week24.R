@@ -1,16 +1,22 @@
 # 2023-06-14
 # Carly Levitz
+# forked and improved by: Oloyede Abdulganiyu
 # Tidy Tuesday: SAFI data - https://github.com/rfordatascience/tidytuesday/blob/master/data/2023/2023-06-13/readme.md
 
 # Set up, bring in the data
 
+install.packages("tidytuesdayR")
+
 rm(list=ls())
 library(ggplot2); library(tidytuesdayR); library(tidyverse); library(ggtext)
+library(ggh4x)
+
 
 rawdata <-tidytuesdayR::tt_load(2023, week = 24)$`safi_data`
 savedirectory <- "/Users/carlylevitz/Documents/Data/tidytuesday/"
 
 # Understanding the data
+View(rawdata)
 summary(rawdata$years_liv)
 firstquartile <- summary(rawdata$years_liv)[1]
 secondquartile <- summary(rawdata$years_liv)[2]
@@ -48,6 +54,8 @@ table(rawdata$affect_conflicts)
     distinct() %>%
     mutate(percent = n/N
            ,graphlabel = paste0(round(percent*100,1),"%\n(n=",n,")"))
+
+View(data)
 
 ## Set up the graph stuff
   xaxistitle <- "Percent of households"
@@ -101,4 +109,66 @@ table(rawdata$affect_conflicts)
 
 dev.print(png, file = paste(savedirectory,"TidyTuesday2023Week24.png",sep=""), width = 1100, height = 900)
 dev.off()
+
+
+
+
+df <- transform(
+  data,
+  Nester = ifelse(data$affectedbyconflicts == "unknown", "unknown",
+                  ifelse(data$affectedbyconflicts %in% c("never", "once"), "barely",
+                         ifelse(data$affectedbyconflicts %in% c("frequently", "more than once"), "usually",
+                                NA)))
+)
+
+
+u = "#babebf";f = "#6975cf"; m = "#80a9e8"; o= "#2fbd53"; n = "#abf5be"
+
+
+#### facetted chart of the same chart
+plot<- data %>% ggplot(aes(x=percent,y=yearslived,fill=affectedbyconflicts)) +
+  geom_bar(stat="identity",color="gray20") +
+  theme_classic() +
+  theme(strip.background = element_blank())+
+  facet_nested(~affectedbyconflicts + yearslived, scales = "free")+
+  scale_fill_manual(values=c("#babebf","#6975cf","#80a9e8","#2fbd53","#abf5be"))
+plot
+
+
+## set the orientation of the facets in the plot
+position_scales <- list(
+  scale_x_continuous(guide = "axis_minor"),
+  scale_x_continuous( guide = "axis_truncated"),
+  scale_x_reverse()
+)
+
+
+
+
+
+# Create bar chart using ggplot2
+barplot <- ggplot(df, aes(x = percent, y = yearslived,fill=affectedbyconflicts )) +
+  geom_bar(stat = "identity") +
+  facet_nested(. ~ Nester + affectedbyconflicts , scales = "free", space = "free", nest_line = TRUE) +
+  theme_minimal_grid(color = "#f7fcca") +
+  theme(strip.background = element_blank()) +
+  scale_fill_manual(values=c(u,f,m,o,n))+
+  theme(legend.position = "none") +
+  theme(axis.title = element_text(face = "bold", family = "rubik",color = 'black'))+
+  theme(plot.title = element_text(size =15,face = "bold", hjust = 0.5))+
+  theme(plot.subtitle = element_text(face = "bold", hjust = 0.5))+
+  theme(plot.caption = element_text(face = "italic", hjust = 0.5))+
+  theme(plot.background  = element_rect(fill="#f7fcca", color="#f7fcca"))+
+  facetted_pos_scales(x = position_scales) +
+  labs(title = "How is Length of Time Lived in A village Related To Conflict Frequency",
+       subtitle = "Interview took place between Nov 2016 and Jun 2017 in three villages : Chirodzo, God, and Ruaca",
+       y = "Years Lived In Village",
+       x = "Percentage of Household",
+       caption = "Tidy Tuesday 2023 week 23
+       Note: 'Years lived' was categorized by quartiles.
+       Source: Data comes from the SAFI (Studying African Farmer-Led Irrigation) survey, a subset of of the data used in the Data Capentry Social Sciences workshop.
+       Visualization: twitter: @NobleGee6 || code:https://github.com/noble-g/tidytuesday
+       Forked: @carlylevitz
+       Tools: #rstat #ggplot2 #gg4hx #ggtext"
+  );barplot
 
